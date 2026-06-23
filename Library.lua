@@ -55,6 +55,10 @@ local Library = {
 
     KeybindMode = 'All';
 
+    ShowToggleFrameInKeybinds = true;
+    ShowCustomCursor = true;
+    NotifySide = 'Left';
+
     NotifyConfig = {
         Alignment = 'Left';
         BarSide   = 'Left';
@@ -1233,14 +1237,60 @@ do
             Parent = Library.KeybindContainer,
         })
 
+        Library:Create('UIListLayout', {
+            FillDirection = Enum.FillDirection.Horizontal;
+            SortOrder = Enum.SortOrder.LayoutOrder;
+            VerticalAlignment = Enum.VerticalAlignment.Center;
+            Padding = UDim.new(0, 4);
+            Parent = KeybindEntry;
+        });
+
         local ContainerLabel = Library:CreateLabel({
-            Position = UDim2.new(0, 2, 0, 0),
-            Size = UDim2.new(1, -4, 1, 0),
+            LayoutOrder = 1;
+            Size = UDim2.new(1, 0, 0, 18),
             TextSize = Library.FontSize - 1,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 111,
             Parent = KeybindEntry,
         }, true)
+
+        local KBToggleOuter = Library:Create('Frame', {
+            BackgroundColor3 = Color3.new(0, 0, 0);
+            BorderColor3 = Color3.new(0, 0, 0);
+            Size = UDim2.new(0, 13, 0, 13);
+            LayoutOrder = 2;
+            Visible = false;
+            ZIndex = 111;
+            Parent = KeybindEntry;
+        });
+        local KBToggleInner = Library:Create('Frame', {
+            BackgroundColor3 = Library.MainColor;
+            BorderColor3 = Library.OutlineColor;
+            BorderMode = Enum.BorderMode.Inset;
+            Size = UDim2.new(1, 0, 1, 0);
+            ZIndex = 112;
+            Parent = KBToggleOuter;
+        });
+        Library:AddToRegistry(KBToggleInner, {
+            BackgroundColor3 = 'MainColor';
+            BorderColor3 = 'OutlineColor';
+        });
+        Library:ApplyCornerRadius(KBToggleOuter, 2);
+        Library:ApplyCornerRadius(KBToggleInner, 2);
+        Library:Create('TextButton', {
+            BackgroundTransparency = 1;
+            Size = UDim2.new(1, 0, 1, 0);
+            Text = '';
+            ZIndex = 113;
+            Parent = KBToggleOuter;
+        }).InputBegan:Connect(function(Input)
+            if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch)
+                and KeyPicker.Mode == 'Toggle' then
+                KeyPicker.Toggled = not KeyPicker.Toggled;
+                KeyPicker:DoClick();
+                KeyPicker:Update();
+            end;
+        end);
 
         local Modes = Info.Modes or { 'Always', 'Toggle', 'Hold' };
         local ModeButtons = {};
@@ -1315,6 +1365,16 @@ do
             ContainerLabel.TextColor3 = State and Library.AccentColor or Library.FontColor;
             Library.RegistryMap[ContainerLabel].Properties.TextColor3 = State and 'AccentColor' or 'FontColor';
 
+            local showKbToggle = Library.ShowToggleFrameInKeybinds and KeyPicker.Mode == 'Toggle';
+            KBToggleOuter.Visible = showKbToggle;
+            ContainerLabel.Size = showKbToggle and UDim2.new(1, -17, 0, 18) or UDim2.new(1, 0, 0, 18);
+            if showKbToggle then
+                KBToggleInner.BackgroundColor3 = KeyPicker.Toggled and Library.AccentColor or Library.MainColor;
+                KBToggleInner.BorderColor3 = KeyPicker.Toggled and Library.AccentColorDark or Library.OutlineColor;
+                Library.RegistryMap[KBToggleInner].Properties.BackgroundColor3 = KeyPicker.Toggled and 'AccentColor' or 'MainColor';
+                Library.RegistryMap[KBToggleInner].Properties.BorderColor3 = KeyPicker.Toggled and 'AccentColorDark' or 'OutlineColor';
+            end;
+
             local YSize = 0
             local XSize = 0
 
@@ -1323,7 +1383,10 @@ do
                     YSize = YSize + 18;
                     local LabelChild = Frame:FindFirstChildOfClass('TextLabel')
                     if LabelChild and (LabelChild.TextBounds.X + 20 > XSize) then
-                        XSize = LabelChild.TextBounds.X + 20 
+                        XSize = LabelChild.TextBounds.X + 20
+                    end
+                    if Library.ShowToggleFrameInKeybinds then
+                        XSize = XSize + 17;
                     end
                 end;
             end;
@@ -2835,6 +2898,10 @@ do
         local area = Library.NotificationArea
         local layout = Library.NotifLayout
 
+        if Library.NotifySide then
+            cfg.Alignment = Library.NotifySide
+        end
+
         area.Position = UDim2.new(0, cfg.PositionX, 0, cfg.PositionY)
         area.Size     = UDim2.new(0, 300, 1, -cfg.PositionY)
 
@@ -2852,6 +2919,14 @@ do
     end
     Library.UpdateNotifAlignment = Library_UpdateNotifAlignment
     Library_UpdateNotifAlignment()
+
+    function Library:SetNotifySide(Side)
+        self.NotifySide = Side
+        self.NotifyConfig.Alignment = Side
+        if self.UpdateNotifAlignment then
+            self:UpdateNotifAlignment()
+        end
+    end
 
     local WatermarkOuter = Library:Create('Frame', {
         BorderColor3 = Color3.new(0, 0, 0);
@@ -3159,6 +3234,14 @@ function Library:CreateWindow(...)
     if Config.Center then
         Config.AnchorPoint = Vector2.new(0.5, 0.5)
         Config.Position = UDim2.fromScale(0.5, 0.5)
+    end
+
+    if Config.ShowCustomCursor ~= nil then
+        Library.ShowCustomCursor = Config.ShowCustomCursor
+    end
+
+    if type(Config.NotifySide) == 'string' then
+        Library:SetNotifySide(Config.NotifySide)
     end
 
     local Window = {
@@ -3729,7 +3812,7 @@ function Library:CreateWindow(...)
         Library.Toggled = not Library.Toggled;
         ModalElement.Modal = Library.Toggled;
         Outer.Visible = Library.Toggled;
-        if Library.Toggled then
+        if Library.Toggled and Library.ShowCustomCursor ~= false then
             task.spawn(function()
                 local State = InputService.MouseIconEnabled;
 
