@@ -29,18 +29,18 @@ local Library = {
 
     HudRegistry = {};
 
-    FontColor = Color3.fromRGB(230, 232, 238);
-    MainColor = Color3.fromRGB(22, 24, 28);
-    BackgroundColor = Color3.fromRGB(14, 15, 18);
-    AccentColor = Color3.fromRGB(94, 169, 214);
-    OutlineColor = Color3.fromRGB(36, 38, 44);
-    RiskColor = Color3.fromRGB(232, 106, 106),
+    FontColor = Color3.fromRGB(220, 222, 228);
+    MainColor = Color3.fromRGB(24, 25, 29);
+    BackgroundColor = Color3.fromRGB(16, 17, 20);
+    AccentColor = Color3.fromRGB(108, 138, 168);
+    OutlineColor = Color3.fromRGB(42, 44, 50);
+    RiskColor = Color3.fromRGB(220, 110, 110),
 
     Black = Color3.new(0, 0, 0);
 
-    Font = Enum.Font.GothamMedium,
+    Font = Enum.Font.Gotham,
     FontSize = 13,
-    CornerRadius = 4,
+    CornerRadius = 3,
 
     OpenedFrames = {};
     DependencyBoxes = {};
@@ -204,7 +204,7 @@ function Library:ApplyTextStroke(Inst)
 
     Library:Create('UIStroke', {
         Color = Color3.new(0, 0, 0);
-        Thickness = 1;
+        Thickness = 0.5;
         LineJoinMode = Enum.LineJoinMode.Miter;
         Parent = Inst;
     });
@@ -224,8 +224,8 @@ end;
 function Library:ApplySurfaceSheen(Parent)
     Library:Create('UIGradient', {
         Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.88);
-            NumberSequenceKeypoint.new(0.55, 0.95);
+            NumberSequenceKeypoint.new(0, 0.93);
+            NumberSequenceKeypoint.new(0.6, 0.97);
             NumberSequenceKeypoint.new(1, 1);
         });
         Rotation = 90;
@@ -233,17 +233,53 @@ function Library:ApplySurfaceSheen(Parent)
     });
 end;
 
+function Library:CreateChevron(Parent, ZIndex)
+    local Holder = Library:Create('Frame', {
+        AnchorPoint = Vector2.new(0.5, 0.5);
+        BackgroundTransparency = 1;
+        Size = UDim2.new(0, 10, 0, 6);
+        ZIndex = ZIndex or 8;
+        Parent = Parent;
+    });
+
+    local Left = Library:Create('Frame', {
+        AnchorPoint = Vector2.new(0.5, 0.5);
+        BackgroundColor3 = Library.FontColor;
+        BorderSizePixel = 0;
+        Position = UDim2.new(0.5, -2, 0.5, 0);
+        Size = UDim2.new(0, 1, 0, 6);
+        Rotation = 45;
+        ZIndex = (ZIndex or 8) + 1;
+        Parent = Holder;
+    });
+    local Right = Library:Create('Frame', {
+        AnchorPoint = Vector2.new(0.5, 0.5);
+        BackgroundColor3 = Library.FontColor;
+        BorderSizePixel = 0;
+        Position = UDim2.new(0.5, 2, 0.5, 0);
+        Size = UDim2.new(0, 1, 0, 6);
+        Rotation = -45;
+        ZIndex = (ZIndex or 8) + 1;
+        Parent = Holder;
+    });
+
+    Library:AddToRegistry(Left, { BackgroundColor3 = 'FontColor' });
+    Library:AddToRegistry(Right, { BackgroundColor3 = 'FontColor' });
+
+    return Holder;
+end;
+
 function Library:ApplyGlow(Inst)
     local Stroke = Library:Create('UIStroke', {
-        Color = Library.AccentColor;
+        Color = Library.OutlineColor;
         Thickness = 1;
-        Transparency = 0.75;
+        Transparency = 0.35;
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
         Parent = Inst;
     });
 
     Library:AddToRegistry(Stroke, {
-        Color = 'AccentColor';
+        Color = 'OutlineColor';
     });
 end;
 
@@ -252,7 +288,7 @@ function Library:CreateLabel(Properties, IsHud)
         BackgroundTransparency = 1;
         Font = Library.Font;
         TextColor3 = Library.FontColor;
-        TextSize = Library.FontSize + 2;
+        TextSize = Library.FontSize + 1;
         TextStrokeTransparency = 0;
     });
     Library:ApplyTextStroke(_Instance);
@@ -2454,24 +2490,13 @@ do
         Library:ApplyCornerRadius(DropdownOuter);
         Library:ApplyCornerRadius(DropdownInner);
 
-        local DropdownArrow = Library:CreateLabel({
-            AnchorPoint = Vector2.new(1, 0.5);
-            BackgroundTransparency = 1;
-            Position = UDim2.new(1, -5, 0.5, 0);
-            Size = UDim2.new(0, 14, 0, 14);
-            Text = '▾';
-            TextSize = Library.FontSize + 1;
-            TextXAlignment = Enum.TextXAlignment.Center;
-            TextYAlignment = Enum.TextYAlignment.Center;
-            ZIndex = 8;
-            Parent = DropdownInner;
-        });
-        Library:AddToRegistry(DropdownArrow, {
-            TextColor3 = 'AccentColor';
-        });
+        local Chevron = Library:CreateChevron(DropdownInner, 8);
+        Chevron.AnchorPoint = Vector2.new(1, 0.5);
+        Chevron.Position = UDim2.new(1, -9, 0.5, 0);
+
         local ItemList = Library:CreateLabel({
             Position = UDim2.new(0, 5, 0, 0);
-            Size = UDim2.new(1, -5, 1, 0);
+            Size = UDim2.new(1, -20, 1, 0);
             TextSize = Library.FontSize;
             Text = '--';
             TextXAlignment = Enum.TextXAlignment.Left;
@@ -3259,7 +3284,6 @@ function Library:CreateWindow(...)
         ZIndex = 1;
         Parent = ScreenGui;
     });
-    Library:ApplyGlow(Outer);
     Library:ApplyCornerRadius(Outer);
     Library:MakeDraggable(Outer, 25, true);
 
@@ -3288,7 +3312,7 @@ function Library:CreateWindow(...)
         Parent = Inner;
     });
     local TitleAccent = Library:Create('Frame', {
-        BackgroundColor3 = Library.AccentColor;
+        BackgroundColor3 = Library.OutlineColor;
         BorderSizePixel = 0;
         Position = UDim2.new(0, 10, 0, 24);
         Size = UDim2.new(1, -20, 0, 1);
@@ -3296,20 +3320,22 @@ function Library:CreateWindow(...)
         Parent = Inner;
     });
     Library:AddToRegistry(TitleAccent, {
-        BackgroundColor3 = 'AccentColor';
+        BackgroundColor3 = 'OutlineColor';
     });
     local MapNameLabel = Library:CreateLabel({
         AnchorPoint = Vector2.new(1, 0),
         Position = UDim2.new(1, -7, 0, 0),
         Size = UDim2.new(0, 0, 0, 25),
         Text = 'Loading...',
-        TextColor3 = Library.AccentColor,
+        TextColor3 = Color3.fromRGB(130, 134, 142),
         TextXAlignment = Enum.TextXAlignment.Right,
         ZIndex = 1,
         Parent = Inner;
     });
     Library:AddToRegistry(MapNameLabel, {
-        TextColor3 = 'AccentColor';
+        TextColor3 = function()
+            return Color3.fromRGB(130, 134, 142);
+        end;
     });
     task.spawn(function()
         local success, info = pcall(function()
@@ -3407,7 +3433,7 @@ function Library:CreateWindow(...)
             Tabboxes = {};
         };
 
-        local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, Library.FontSize + 2);
+        local TabButtonWidth = Library:GetTextBounds(Name, Library.Font, Library.FontSize + 1);
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
             BorderColor3 = Library.OutlineColor;
@@ -3549,7 +3575,7 @@ function Library:CreateWindow(...)
             local Highlight = Library:Create('Frame', {
                 BackgroundColor3 = Library.AccentColor;
                 BorderSizePixel = 0;
-                Size = UDim2.new(0, 3, 1, 0);
+                Size = UDim2.new(0, 2, 1, 0);
                 ZIndex = 5;
                 Parent = BoxInner;
             });
