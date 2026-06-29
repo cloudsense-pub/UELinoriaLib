@@ -48,7 +48,7 @@ local Library = {
     ScreenGui = ScreenGui;
 
     Toggled = false;
-    WireframeDrag = false;
+    WireframeDrag = true;
     UseBlur = false;
     BlurSize = 15;
 
@@ -258,9 +258,9 @@ function Library:MakeDraggable(Instance, Cutoff, IsWindow)
                                 ZIndex = 100000,
                                 Parent = ScreenGui
                             })
-                         
-                            local stroke = Library:Create("UIStroke", {
-                                Color = Library.AccentColor,
+
+                            Library:Create("UIStroke", {
+                                Color = Color3.fromRGB(255, 255, 255),
                                 Thickness = 1,
                                 ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
                                 Parent = Wireframe
@@ -297,6 +297,103 @@ function Library:MakeDraggable(Instance, Cutoff, IsWindow)
                 end
             end)
         end
+    end)
+end;
+
+function Library:MakeResizable(Instance, MinSize, MaxSize)
+    MinSize = MinSize or Vector2.new(400, 300)
+    MaxSize = MaxSize or Vector2.new(1400, 1000)
+
+    local Grip = Library:Create('TextButton', {
+        Name = 'ResizeGrip',
+        Text = '',
+        AutoButtonColor = false,
+        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(16, 16),
+        Position = UDim2.new(1, -4, 1, -4),
+        AnchorPoint = Vector2.new(1, 1),
+        ZIndex = 25,
+        Parent = Instance,
+    })
+
+    local GripIcon = Library:CreateLabel({
+        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(16, 16),
+        Position = UDim2.new(1, 0, 1, 0),
+        AnchorPoint = Vector2.new(1, 1),
+        Text = '◢',
+        TextColor3 = Library.OutlineColor,
+        TextSize = Library.FontSize + 2,
+        ZIndex = 26,
+        Parent = Grip,
+    })
+    Library:AddToRegistry(GripIcon, {
+        TextColor3 = 'OutlineColor',
+    })
+
+    Grip.InputBegan:Connect(function(Input)
+        if Input.UserInputType ~= Enum.UserInputType.MouseButton1
+            and Input.UserInputType ~= Enum.UserInputType.Touch then
+            return
+        end
+
+        local StartSize = Instance.Size
+        local DragStart = Input.Position
+        local HasMoved = false
+        local Wireframe = nil
+        local ChangedConn, EndedConn
+
+        ChangedConn = InputService.InputChanged:Connect(function(Change)
+            if Change.UserInputType ~= Enum.UserInputType.MouseMovement and Change ~= Input then
+                return
+            end
+
+            local Delta = Change.Position - DragStart
+            if Delta.Magnitude <= 2 then return end
+            HasMoved = true
+
+            local newW = math.clamp(StartSize.X.Offset + Delta.X, MinSize.X, MaxSize.X)
+            local newH = math.clamp(StartSize.Y.Offset + Delta.Y, MinSize.Y, MaxSize.Y)
+            local newSize = UDim2.fromOffset(newW, newH)
+
+            if Library.WireframeDrag then
+                if not Wireframe then
+                    Wireframe = Library:Create('Frame', {
+                        Size = Instance.Size,
+                        Position = Instance.Position,
+                        AnchorPoint = Instance.AnchorPoint,
+                        BackgroundTransparency = 1,
+                        Active = false,
+                        ZIndex = 100000,
+                        Parent = ScreenGui,
+                    })
+                    Library:Create('UIStroke', {
+                        Color = Color3.fromRGB(255, 255, 255),
+                        Thickness = 1,
+                        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                        Parent = Wireframe,
+                    })
+                end
+                Wireframe.Size = newSize
+                Wireframe.Position = Instance.Position
+            else
+                Instance.Size = newSize
+            end
+        end)
+
+        EndedConn = InputService.InputEnded:Connect(function(EndInput)
+            if EndInput ~= Input and EndInput.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
+
+            ChangedConn:Disconnect()
+            EndedConn:Disconnect()
+
+            if Library.WireframeDrag and HasMoved and Wireframe then
+                Instance.Size = Wireframe.Size
+                Wireframe:Destroy()
+            end
+        end)
     end)
 end;
 
@@ -2827,8 +2924,9 @@ do
     Library_UpdateNotifAlignment()
 
     local WatermarkOuter = Library:Create('Frame', {
+        AnchorPoint = Vector2.new(0.5, 0);
         BorderColor3 = Color3.new(0, 0, 0);
-        Position = UDim2.new(0, 100, 0, -25);
+        Position = UDim2.new(0.5, 0, 0, 8);
         Size = UDim2.new(0, 213, 0, 20);
         ZIndex = 200;
         Visible = false;
@@ -2967,7 +3065,10 @@ end;
 
 function Library:SetWatermark(Text)
     local X, Y = Library:GetTextBounds(Text, Library.Font, Library.FontSize);
+    local posY = Library.Watermark.Position.Y
+    Library.Watermark.AnchorPoint = Vector2.new(0.5, 0)
     Library.Watermark.Size = UDim2.new(0, X + 15, 0, (Y * 1.5) + 3);
+    Library.Watermark.Position = UDim2.new(0.5, 0, posY.Scale, posY.Offset)
     Library:SetWatermarkVisibility(true)
 
     Library.WatermarkText.Text = Text;
@@ -3129,13 +3230,17 @@ function Library:CreateWindow(...)
         Config.Position = UDim2.fromScale(0.5, 0.5)
     end
 
+    if Config.WireframeDrag ~= nil then
+        Library.WireframeDrag = Config.WireframeDrag
+    end
+
     local Window = {
         Tabs = {};
     };
 
     local Outer = Library:Create('Frame', {
         AnchorPoint = Config.AnchorPoint,
-        BackgroundColor3 = Color3.new(0, 0, 0);
+        BackgroundTransparency = 1,
         BorderSizePixel = 0;
         Position = Config.Position,
         Size = Config.Size,
@@ -3144,6 +3249,10 @@ function Library:CreateWindow(...)
         Parent = ScreenGui;
     });
     Library:MakeDraggable(Outer, 25, true);
+
+    if Config.Resizable then
+        Library:MakeResizable(Outer, Config.MinSize, Config.MaxSize)
+    end
 
     local Inner = Library:Create('Frame', {
         Name = "Inner",
